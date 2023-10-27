@@ -3,6 +3,7 @@
 import cv2
 import numpy as np
 from functools import partial
+import json
 
 vid = cv2.VideoCapture(0)
 
@@ -71,7 +72,18 @@ while (True):
 	cv2.imshow(title_window, frame)
 	k = cv2.waitKey(1)
 	if k == ord('w'):
-		pass
+		limits = {
+            'limits': {
+                'B': {'min': cv2.getTrackbarPos(b_min_trackbar, title_window),
+                      'max': cv2.getTrackbarPos(b_max_trackbar, title_window)},
+                'G': {'min': cv2.getTrackbarPos(g_min_trackbar, title_window),
+                      'max': cv2.getTrackbarPos(g_max_trackbar, title_window)},
+                'R': {'min': cv2.getTrackbarPos(r_min_trackbar, title_window),
+                      'max': cv2.getTrackbarPos(r_max_trackbar, title_window)}}
+            }
+
+		with open('limits.json', 'w') as file:
+			json.dump(limits, file)
 	elif k == ord('q'):
 		break
 
