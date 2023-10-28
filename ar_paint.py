@@ -2,6 +2,7 @@
 import argparse
 import copy
 from functools import partial
+import json
 
 import cv2
 import numpy as np
@@ -22,30 +23,39 @@ def mouseCallback(event, x, y, flags, *userdata, drawing_data):
     drawing_data['previous_x'] = x
     drawing_data['previous_y'] = y
 
+def load_color_limits(json_file):
+    with open(json_file, 'r') as file:
+        limits = json.load(file)
+    return limits
+
 def main():
     # -----------------------------------------------
     # Initialization
     # -----------------------------------------------
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-if', '--image_filename', type=str, help='', required=False)
+    
+    #....Programm arguments creation....
+    parser = argparse.ArgumentParser(description='PSR AR Paint Aplication')
+    parser.add_argument('-j', '--JSON', type=str, help='Full path to the JSON file', required=True)
 
     args = vars(parser.parse_args())
 
-    image_filename = args['image_filename']
-    if image_filename == None:
-        print('NADA')
-    else:
-        print(image_filename)
+    #.... Setting the color limits....
+    color_limits = load_color_limits(args['JSON'])
 
-    image_rgb = np.ones((400, 600, 3), dtype=np.uint8) * 255
-    default_img = copy.deepcopy(image_rgb)
+    #....Camera Initialization....
+    vid = cv2.VideoCapture(0)
+    ret, frame = vid.read()
+    h, w, nc = frame.shape
 
-    h, w, nc = image_rgb.shape
+    #....Canvas Creation....
+    canvas = np.ones((h, w, 3), dtype=np.uint8) * 255 #White board
+    default_img = copy.deepcopy(canvas)
 
-    drawing_data = {'img': image_rgb, 'pencil_down': False, 'previous_x': 0, 'previous_y': 0, 'color': (255, 255, 255), 'thickness': 1}
+    #....Image data storing...
+    drawing_data = {'img': canvas, 'pencil_down': False, 'previous_x': 0, 'previous_y': 0, 'color': (255, 255, 255), 'thickness': 1}
 
-    cv2.namedWindow("image_rgb")
-    cv2.setMouseCallback("image_rgb", partial(mouseCallback, drawing_data=drawing_data))
+    cv2.namedWindow("canvas")
+    cv2.setMouseCallback("canvas", partial(mouseCallback, drawing_data=drawing_data))
 
     # -----------------------------------------------
     # Execution
@@ -55,7 +65,10 @@ def main():
     # Visualization
     # -----------------------------------------------
     while True:
-        cv2.imshow('image_rgb', drawing_data['img'])
+        ret, frame = vid.read()
+        cv2.imshow('Camera feedback',frame)
+
+        cv2.imshow('canvas', drawing_data['img'])
         key = cv2.waitKey(50)
 
         if key == ord('q'):
