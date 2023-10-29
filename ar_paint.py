@@ -26,7 +26,8 @@ def mouseCallback(event, x, y, flags, *userdata, drawing_data):
 def load_color_limits(json_file):
     with open(json_file, 'r') as file:
         limits = json.load(file)
-    return limits
+        color_limits=limits['limits']
+    return color_limits
 
 def main():
     # -----------------------------------------------
@@ -41,6 +42,7 @@ def main():
 
     #.... Setting the color limits....
     color_limits = load_color_limits(args['JSON'])
+    print(color_limits)
 
     #....Camera Initialization....
     vid = cv2.VideoCapture(0)
@@ -65,10 +67,44 @@ def main():
     # Visualization
     # -----------------------------------------------
     while True:
+        #....Camera capturing continuously....
         ret, frame = vid.read()
         cv2.imshow('Camera feedback',frame)
 
+        #...Image processing....
+        lower_bound = np.array([color_limits['B']['min'], color_limits['G']['min'], color_limits['R']['min']], dtype=np.uint8)
+        upper_bound = np.array([color_limits['B']['max'], color_limits['G']['max'], color_limits['R']['max']], dtype=np.uint8)
+
+        mask = cv2.inRange(frame, lower_bound, upper_bound)
+
+        cv2.imshow('Mask Feedback', mask)
+
+        #....Biggest area Selection....
+        connectivity = 4  
+        output = cv2.connectedComponentsWithStats(mask, connectivity, cv2.CV_32S)
+        num_labels = output[0]  #Number of different group of pixels
+        labels = output[1]      #Matrices with the different group of pixels
+        stats = output[2]       #Saves some important stats (in this example, the important one its the area)
+        centroids = output[3]   #Calculates the different centroids of the groups
+
+        if num_labels > 1:
+            largest_object_idx = 1 + stats[1:, cv2.CC_STAT_AREA].argmax()   #Stores the biggest area
+
+            largest_object_mask = (labels == largest_object_idx).astype(np.uint8)*255
+            largest_object_mask = cv2.cvtColor(largest_object_mask, cv2.COLOR_GRAY2BGR)
+
+            cv2.imshow('Highlight Test', largest_object_mask)
+
+            frame_with_highlight = cv2.addWeighted(frame, 1, largest_object_mask, 0.5, 0)
+            
+            cv2.imshow('Biggest Area Highlight', frame_with_highlight)
+        else:
+            cv2.imshow('Biggest Area Highlight', frame)
+        
+        #....Canvas updating....
         cv2.imshow('canvas', drawing_data['img'])
+        
+        #....Key awaiting....
         key = cv2.waitKey(50)
 
         if key == ord('q'):
