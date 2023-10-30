@@ -38,12 +38,12 @@ def main():
     #....Programm arguments creation....
     parser = argparse.ArgumentParser(description='PSR AR Paint Aplication')
     parser.add_argument('-j', '--JSON', type=str, help='Full path to the JSON file', required=True)
+    parser.add_argument('-usp', '--use_shake_prevention', type=int, help='Set the value for the shakedown - recomended: 50', required=False)
 
     args = vars(parser.parse_args())
 
     #.... Setting the color limits....
     color_limits = load_color_limits(args['JSON'])
-    print(color_limits)
 
     #....Camera Initialization....
     vid = cv2.VideoCapture(0)
@@ -59,6 +59,14 @@ def main():
 
     cv2.namedWindow("canvas")
     cv2.setMouseCallback("canvas", partial(mouseCallback, drawing_data=drawing_data))
+
+    #....Shakedown initialization....
+    prev_center = None
+    if args['use_shake_prevention'] == None:
+        use_shake  = False
+    else:
+        use_shake = True
+        shake_threshold = args['use_shake_prevention']   
 
     # -----------------------------------------------
     # Execution
@@ -77,8 +85,6 @@ def main():
         upper_bound = np.array([color_limits['B']['max'], color_limits['G']['max'], color_limits['R']['max']], dtype=np.uint8)
 
         mask = cv2.inRange(frame, lower_bound, upper_bound)
-
-        cv2.imshow('Mask Feedback', mask)
 
         #....Biggest area Selection....
         connectivity = 4  
@@ -103,18 +109,33 @@ def main():
                 if M['m00'] != 0:
                     center_x = int(M['m10'] / M['m00'])
                     center_y = int(M['m01'] / M['m00'])
-                    center = (center_x, center_y)
+                    current_center = (center_x, center_y)
 
                     cv2.line(frame_with_highlight, (center_x-5,center_y-5), (center_x+5,center_y+5), (0, 0, 255), 2)
                     cv2.line(frame_with_highlight, (center_x+5,center_y-5), (center_x-5,center_y+5), (0, 0, 255), 2)
                     
-                    cv2.line(drawing_data['img'], (drawing_data['previous_x'], drawing_data['previous_y']), center, drawing_data['color'], drawing_data['thickness'])
-                    drawing_data['previous_x'] = center_x
-                    drawing_data['previous_y'] = center_y
+                    if use_shake == False:
+                        cv2.line(drawing_data['img'], (drawing_data['previous_x'], drawing_data['previous_y']), current_center, drawing_data['color'], drawing_data['thickness'])
+                        drawing_data['previous_x'] = center_x
+                        drawing_data['previous_y'] = center_y
+                else:
+                    current_center = None
+                
+                if use_shake:
+                    if prev_center is not None and current_center is not None:
+                        dx, dy = abs(current_center[0] - prev_center[0]), abs(current_center[1] - prev_center[1])
+                        max_difference = max(np.abs(dx), np.abs(dy))
+                        if max_difference <= shake_threshold:
+                            cv2.line(drawing_data['img'], prev_center, current_center, drawing_data['color'], drawing_data['thickness'])
+                        else:
+                            cv2.circle(drawing_data['img'], current_center, 2, drawing_data['color'], -1)
+                    
+                    prev_center = current_center
             
             cv2.imshow('Biggest Area Highlight', frame_with_highlight)
         else:
             cv2.imshow('Biggest Area Highlight', frame)
+        
         
         #....Canvas updating....
         cv2.imshow('canvas', drawing_data['img'])
