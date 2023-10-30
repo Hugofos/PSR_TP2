@@ -39,6 +39,7 @@ def main():
     parser = argparse.ArgumentParser(description='PSR AR Paint Aplication')
     parser.add_argument('-j', '--JSON', type=str, help='Full path to the JSON file', required=True)
     parser.add_argument('-usp', '--use_shake_prevention', type=int, help='Set the value for the shakedown - recomended: 50', required=False)
+    parser.add_argument('-ucs','--use_camera_stream', action='store_true',help='Use the camera stream as a canvas instead of a white board')
 
     args = vars(parser.parse_args())
 
@@ -51,11 +52,14 @@ def main():
     h, w, nc = frame.shape
 
     #....Canvas Creation....
-    canvas = np.ones((h, w, 3), dtype=np.uint8) * 255 #White board
+    if args['use_camera_stream']:
+        canvas = np.ones((h, w, 3), dtype=np.uint8) #"Transparent" board
+    else: 
+        canvas = np.ones((h, w, 3), dtype=np.uint8) * 255 #White board
     default_img = copy.deepcopy(canvas)
 
     #....Image data storing...
-    drawing_data = {'img': canvas, 'pencil_down': False, 'previous_x': 0, 'previous_y': 0, 'color': (255, 255, 255), 'thickness': 1}
+    drawing_data = {'img': canvas, 'pencil_down': False, 'previous_x': 0, 'previous_y': 0, 'color': (255, 255, 255), 'thickness': 5}
 
     cv2.namedWindow("canvas")
     cv2.setMouseCallback("canvas", partial(mouseCallback, drawing_data=drawing_data))
@@ -138,8 +142,12 @@ def main():
         
         
         #....Canvas updating....
-        cv2.imshow('canvas', drawing_data['img'])
-        
+        if args['use_camera_stream']:
+            camera_and_canvas = cv2.addWeighted(frame, 1, drawing_data['img'], 1, 0)
+            cv2.imshow('canvas', camera_and_canvas)
+        else: 
+            cv2.imshow('canvas', drawing_data['img'])
+
         #....Key awaiting....
         key = cv2.waitKey(50)
 
