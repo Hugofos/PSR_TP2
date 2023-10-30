@@ -95,8 +95,6 @@ def main():
             contours, _ = cv2.findContours(largest_object_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             largest_object_mask = cv2.cvtColor(largest_object_mask, cv2.COLOR_GRAY2BGR)
 
-            cv2.imshow('Highlight Test', largest_object_mask)
-
             frame_with_highlight = cv2.addWeighted(frame, 1, largest_object_mask, 0.5, 0)
 						
             if len(contours) > 0:
@@ -107,7 +105,8 @@ def main():
                     center_y = int(M['m01'] / M['m00'])
                     center = (center_x, center_y)
 
-                    cv2.circle(frame_with_highlight, center, 5, (0, 0, 255), -1)
+                    cv2.line(frame_with_highlight, (center_x-5,center_y-5), (center_x+5,center_y+5), (0, 0, 255), 2)
+                    cv2.line(frame_with_highlight, (center_x+5,center_y-5), (center_x-5,center_y+5), (0, 0, 255), 2)
                     
                     cv2.line(drawing_data['img'], (drawing_data['previous_x'], drawing_data['previous_y']), center, drawing_data['color'], drawing_data['thickness'])
                     drawing_data['previous_x'] = center_x
