@@ -43,8 +43,9 @@ def main():
 
     args = vars(parser.parse_args())
 
-    #.... Setting the color limits....
+    #.... Setting the color limits and drawing mode....
     color_limits = load_color_limits(args['JSON'])
+    drawing_mode = 'Line'
 
     #....Camera Initialization....
     vid = cv2.VideoCapture(0)
@@ -119,7 +120,9 @@ def main():
                     cv2.line(frame_with_highlight, (center_x+5,center_y-5), (center_x-5,center_y+5), (0, 0, 255), 2)
                     
                     if use_shake == False:
-                        cv2.line(drawing_data['img'], (drawing_data['previous_x'], drawing_data['previous_y']), current_center, drawing_data['color'], drawing_data['thickness'])
+                        if drawing_mode == 'Line':
+                            cv2.line(drawing_data['img'], (drawing_data['previous_x'], drawing_data['previous_y']), current_center, drawing_data['color'], drawing_data['thickness'])
+                        
                         drawing_data['previous_x'] = center_x
                         drawing_data['previous_y'] = center_y
                 else:
@@ -130,7 +133,8 @@ def main():
                         dx, dy = abs(current_center[0] - prev_center[0]), abs(current_center[1] - prev_center[1])
                         max_difference = max(np.abs(dx), np.abs(dy))
                         if max_difference <= shake_threshold:
-                            cv2.line(drawing_data['img'], prev_center, current_center, drawing_data['color'], drawing_data['thickness'])
+                            if drawing_mode == 'Line':
+                                cv2.line(drawing_data['img'], prev_center, current_center, drawing_data['color'], drawing_data['thickness'])
                         else:
                             cv2.circle(drawing_data['img'], current_center, 2, drawing_data['color'], -1)
                     
@@ -180,6 +184,18 @@ def main():
                 print('Decreased pencil thickness to: ' + str(drawing_data['thickness']))
             else:
                 print('Minimum value is 1')
+        
+        elif key == ord('s'):
+            print('Changed mode to square')
+            drawing_mode = 'Square'
+
+        elif key == ord('e'):
+            print('Changed to elipse mode')
+            drawing_mode = 'Elipse'
+
+        elif key == ord('o'):
+            print('Changed to circle mode')
+            drawing_mode = 'Circle'
 
         elif key == ord('c'):
             print('Pressed C button')
