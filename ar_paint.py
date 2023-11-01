@@ -1,11 +1,8 @@
 #!/usr/bin/env python3
 import argparse
-from functools import partial
 
 import cv2
 import numpy as np
-import datetime
-from colorama import Fore, Style
 
 from functions import *
 
@@ -24,7 +21,6 @@ def main():
 
     #.... Setting the color limits and drawing mode....
     color_limits = load_color_limits(args['JSON'])
-    drawing_mode = 'Line'
 
     #....Camera Initialization....
     vid = cv2.VideoCapture(0)
@@ -39,7 +35,7 @@ def main():
     default_img = canvas.copy()
 
     #....Image data storing...
-    drawing_data = {'img': canvas, 'pencil_down': False, 'previous_x': 0, 'previous_y': 0, 'color': (255, 255, 255), 'thickness': 5, 'drawing': False, 'start_pos': (0, 0), 'temp_img': canvas.copy()}
+    drawing_data = {'img': canvas, 'pencil_down': False, 'previous_x': 0, 'previous_y': 0, 'color': (255, 255, 255), 'thickness': 5, 'drawing': False, 'drawing_mode': 'Line', 'start_pos': (0, 0), 'temp_img': canvas.copy()}
 
     cv2.namedWindow("canvas")
 
@@ -92,13 +88,13 @@ def main():
                 cv2.line(frame_with_highlight, (center_x-5,center_y-5), (center_x+5,center_y+5), (0, 0, 255), 2)
                 cv2.line(frame_with_highlight, (center_x+5,center_y-5), (center_x-5,center_y+5), (0, 0, 255), 2)
                 if use_shake == False:
-                    if drawing_mode == 'Line':
+                    if drawing_data['drawing_mode'] == 'Line':
                         cv2.line(drawing_data['img'], (drawing_data['previous_x'], drawing_data['previous_y']), (center_x, center_y), drawing_data['color'], drawing_data['thickness'])
 
                     if drawing_data['drawing'] == False:
                         drawing_data['start_pos'] = (center_x, center_y)
                     
-                    draw_shape(drawing_data, drawing_mode)
+                    draw_shape(drawing_data)
                 else:
                     current_center = None
                 
@@ -107,13 +103,13 @@ def main():
                         dx, dy = abs(current_center[0] - prev_center[0]), abs(current_center[1] - prev_center[1])
                         max_difference = max(np.abs(dx), np.abs(dy))
                         if max_difference <= shake_threshold:
-                            if drawing_mode == 'Line':
+                            if drawing_data['drawing_mode'] == 'Line':
                                 cv2.line(drawing_data['img'], prev_center, current_center, drawing_data['color'], drawing_data['thickness'])
                         else:
                             if drawing_data['drawing'] == False:
                                 drawing_data['start_pos'] = (center_x, center_y)
                             
-                            draw_shape(drawing_data, drawing_mode)
+                            draw_shape(drawing_data)
                     
                     prev_center = current_center
             
