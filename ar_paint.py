@@ -74,19 +74,22 @@ def main():
         centroids = output[3]   #Calculates the different centroids of the groups
 
         if num_labels > 1:
-            largest_object_idx = 1 + stats[1:, cv2.CC_STAT_AREA].argmax()   #Stores the biggest area
+            largest_object_idx = 1 + stats[1:, cv2.CC_STAT_AREA].argmax()   #Stores the index of the biggest area
 
-            largest_object_mask = (labels == largest_object_idx).astype(np.uint8)*255
-            largest_object_mask = cv2.cvtColor(largest_object_mask, cv2.COLOR_GRAY2BGR)
+            largest_object_mask = (labels == largest_object_idx).astype(np.uint8)*255   #Creates a mask
+            largest_object_mask = cv2.cvtColor(largest_object_mask, cv2.COLOR_GRAY2BGR) #Convert to color to merge
 
-            frame_with_highlight = cv2.addWeighted(frame, 1, largest_object_mask, 0.5, 0)
-						
+            frame_with_highlight = cv2.addWeighted(frame, 1, largest_object_mask, 0.5, 0)   #Merging the camera image with the mask
+			
+            #....Centroid calcultion and drawing....
             if len(centroids) > 0:
-                current_center = centroids[largest_object_idx]
+                current_center = centroids[largest_object_idx] #Saves the centroid coordinates
                 center_x = int(current_center[0])
                 center_y = int(current_center[1])
-                cv2.line(frame_with_highlight, (center_x-5,center_y-5), (center_x+5,center_y+5), (0, 0, 255), 2)
+                current_center = (center_x, center_y)
+                cv2.line(frame_with_highlight, (center_x-5,center_y-5), (center_x+5,center_y+5), (0, 0, 255), 2) #Draws a cross in the centroid position
                 cv2.line(frame_with_highlight, (center_x+5,center_y-5), (center_x-5,center_y+5), (0, 0, 255), 2)
+                
                 if use_shake == False:
                     if drawing_data['drawing_mode'] == 'Line':
                         cv2.line(drawing_data['img'], (drawing_data['previous_x'], drawing_data['previous_y']), (center_x, center_y), drawing_data['color'], drawing_data['thickness'])
@@ -95,26 +98,29 @@ def main():
                         drawing_data['start_pos'] = (center_x, center_y)
                     
                     draw_shape(drawing_data)
-                else:
-                    current_center = None
                 
-                if use_shake:
-                    if prev_center is not None and current_center is not None:
-                        dx, dy = abs(current_center[0] - prev_center[0]), abs(current_center[1] - prev_center[1])
-                        max_difference = max(np.abs(dx), np.abs(dy))
-                        if max_difference <= shake_threshold:
-                            if drawing_data['drawing_mode'] == 'Line':
-                                cv2.line(drawing_data['img'], prev_center, current_center, drawing_data['color'], drawing_data['thickness'])
-                        else:
-                            if drawing_data['drawing'] == False:
-                                drawing_data['start_pos'] = (center_x, center_y)
-                            
-                            draw_shape(drawing_data)
-                    
-                    prev_center = current_center
-            
                 drawing_data['previous_x'] = center_x
                 drawing_data['previous_y'] = center_y
+
+            else:
+                current_center = None
+                
+            if use_shake:
+                if prev_center is not None and current_center is not None:
+                    dx, dy = abs(current_center[0] - prev_center[0]), abs(current_center[1] - prev_center[1])
+                    max_difference = max(np.abs(dx), np.abs(dy))
+                    if max_difference <= shake_threshold:
+                        print('pc '+str(prev_center))
+                        print('cc '+str(current_center))
+                        if drawing_data['drawing_mode'] == 'Line':
+                            cv2.line(drawing_data['img'], prev_center, current_center, drawing_data['color'], drawing_data['thickness'])
+                        if drawing_data['drawing'] == False:
+                            drawing_data['start_pos'] = (center_x, center_y)
+                
+                        draw_shape(drawing_data)
+                
+                prev_center = current_center
+            
             cv2.imshow('Biggest Area Highlight', frame_with_highlight)
         else:
             cv2.imshow('Biggest Area Highlight', frame)
