@@ -35,9 +35,10 @@ def main():
     default_img = canvas.copy()
 
     #....Image data storing...
-    drawing_data = {'img': canvas, 'pencil_down': False, 'previous_x': 0, 'previous_y': 0, 'color': (255, 255, 255), 'thickness': 5, 'drawing': False, 'drawing_mode': 'Line', 'start_pos': (0, 0), 'temp_img': canvas.copy()}
+    drawing_data = {'img': canvas, 'pencil_down': False, 'previous_x': 0, 'previous_y': 0, 'color': (255, 255, 255), 'thickness': 5, 'drawing': False, 'drawing_mode': None, 'start_pos': (0, 0), 'temp_img': canvas.copy()}
 
     cv2.namedWindow("canvas")
+    cv2.moveWindow("canvas", 40,30)
 
     #....Shakedown initialization....
     prev_center = None
@@ -86,32 +87,33 @@ def main():
                 current_center = centroids[largest_object_idx] #Saves the centroid coordinates
                 center_x = int(current_center[0])
                 center_y = int(current_center[1])
-                current_center = (center_x, center_y)
+                current_center = (center_x, center_y) #this is needed because centroids came in float type
                 cv2.line(frame_with_highlight, (center_x-5,center_y-5), (center_x+5,center_y+5), (0, 0, 255), 2) #Draws a cross in the centroid position
                 cv2.line(frame_with_highlight, (center_x+5,center_y-5), (center_x-5,center_y+5), (0, 0, 255), 2)
                 
                 if use_shake == False:
+                    #Line Drawing
                     if drawing_data['drawing_mode'] == 'Line':
                         cv2.line(drawing_data['img'], (drawing_data['previous_x'], drawing_data['previous_y']), (center_x, center_y), drawing_data['color'], drawing_data['thickness'])
-
+                    #Keeps changing the starting postition until the figure drawing starts
                     if drawing_data['drawing'] == False:
                         drawing_data['start_pos'] = (center_x, center_y)
-                    
+                    #If the drawing mode has changed, it will draw the respective figure
                     draw_shape(drawing_data)
-                
+                #Updates the position
                 drawing_data['previous_x'] = center_x
                 drawing_data['previous_y'] = center_y
 
             else:
-                current_center = None
+                current_center = None #Just in case it doesn't find any centroid
                 
             if use_shake:
-                if prev_center is not None and current_center is not None:
-                    dx, dy = abs(current_center[0] - prev_center[0]), abs(current_center[1] - prev_center[1])
+                if prev_center is not None and current_center is not None: #To calculate a diference is needed to have two different positions
+                    dx, dy = abs(current_center[0] - prev_center[0]), abs(current_center[1] - prev_center[1])   #Difference calculation
                     max_difference = max(np.abs(dx), np.abs(dy))
+                    
+                    #Only draws if there hasn't been a jump
                     if max_difference <= shake_threshold:
-                        print('pc '+str(prev_center))
-                        print('cc '+str(current_center))
                         if drawing_data['drawing_mode'] == 'Line':
                             cv2.line(drawing_data['img'], prev_center, current_center, drawing_data['color'], drawing_data['thickness'])
                         if drawing_data['drawing'] == False:
@@ -119,8 +121,9 @@ def main():
                 
                         draw_shape(drawing_data)
                 
-                prev_center = current_center
+                prev_center = current_center #updates the postion
             
+            #....Showing the highlight and centroid result....
             cv2.imshow('Biggest Area Highlight', frame_with_highlight)
         else:
             cv2.imshow('Biggest Area Highlight', frame)
@@ -128,10 +131,13 @@ def main():
         
         #....Canvas updating....
         if args['use_camera_stream']:
+            #We need to merge the transparent board with the camera image
             if drawing_data['drawing']:
+                #The temp image represents the drawing of a shape that is not yet finished
                 camera_and_canvas = cv2.addWeighted(frame, 1, drawing_data['temp_img'], 1, 0)
                 cv2.imshow('canvas', camera_and_canvas)
             else:
+                #Here the image update its final
                 camera_and_canvas = cv2.addWeighted(frame, 1, drawing_data['img'], 1, 0)
                 cv2.imshow('canvas', camera_and_canvas)
         else:

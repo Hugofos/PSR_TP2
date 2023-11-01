@@ -14,18 +14,21 @@ def load_color_limits(json_file):
 # Draws the shape selected by the user
 def draw_shape(drawing_data):
     if drawing_data['drawing']:
-        drawing_data['temp_img'] = drawing_data['img'].copy()
+        drawing_data['temp_img'] = drawing_data['img'].copy() #creates temp image
         if (drawing_data['start_pos'] == (0, 0)): return
 
         if drawing_data['drawing_mode'] == 'Circle':
+            #Calculates the radius and draws a circle
             circle_radius = int(np.sqrt((drawing_data['start_pos'][0] - drawing_data['previous_x']) ** 2 + (drawing_data['start_pos'][1] - drawing_data['previous_y']) ** 2))
             cv2.circle(drawing_data['temp_img'], (drawing_data['start_pos'][0], drawing_data['start_pos'][1]), circle_radius, drawing_data['color'], drawing_data['thickness'])
-
+        
         elif drawing_data['drawing_mode'] == 'Square':
+            #Draws a rectangle
             cv2.rectangle(drawing_data['temp_img'], (drawing_data['start_pos'][0], drawing_data['start_pos'][1]), (drawing_data['previous_x'], drawing_data['previous_y']), drawing_data['color'], drawing_data['thickness'])
 
         elif drawing_data['drawing_mode'] == 'Ellipse':
-            ellipse_axis = (int(np.sqrt((drawing_data['start_pos'][0] - drawing_data['previous_x']) ** 2 + (drawing_data['start_pos'][1] - drawing_data['previous_y']) ** 2)), 50)
+            #Draws an elipse
+            ellipse_axis = (int(abs(drawing_data['previous_x']-drawing_data['start_pos'][0])),int(abs(drawing_data['previous_y']-drawing_data['start_pos'][1])))
             cv2.ellipse(drawing_data['temp_img'], (drawing_data['start_pos'][0], drawing_data['start_pos'][1]), ellipse_axis, 0, 0, 360, drawing_data['color'], drawing_data['thickness'])
 
 # Changes program behavier according to key pressed
@@ -57,17 +60,14 @@ def pressed_key(key, drawing_data, default_img):
             print('Minimum value is 1')
     
     elif key == ord('s'):
-        print('Changed mode to square')
         drawing_data['drawing_mode'] = 'Square'
         drawing_data['drawing'] = True
 
     elif key == ord('e'):
-        print('Changed to ellipse mode')
         drawing_data['drawing_mode'] = 'Ellipse'
         drawing_data['drawing'] = True
 
     elif key == ord('o'):
-        print('Changed to circle mode')
         drawing_data['drawing_mode'] = 'Circle'
         drawing_data['drawing'] = True
 
