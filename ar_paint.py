@@ -1,54 +1,13 @@
 #!/usr/bin/env python3
 import argparse
-import copy
 from functools import partial
-import json
 
 import cv2
 import numpy as np
 import datetime
 from colorama import Fore, Style
 
-def mouseCallback(event, x, y, flags, *userdata, drawing_data):
-    if event == cv2.EVENT_LBUTTONDOWN:
-        drawing_data['pencil_down'] = True
-        print(Fore.BLUE + 'pencil_down set to True' + Style.RESET_ALL)
-
-    elif event == cv2.EVENT_LBUTTONUP:
-        drawing_data['pencil_down'] = False
-        print(Fore.RED + 'pencil_down released' + Style.RESET_ALL)
-
-    if drawing_data['pencil_down'] == True:
-        cv2.line(drawing_data['img'], (drawing_data['previous_x'], drawing_data['previous_y']), (x, y), drawing_data['color'], drawing_data['thickness'])
-
-    drawing_data['previous_x'] = x
-    drawing_data['previous_y'] = y
-
-def load_color_limits(json_file):
-    with open(json_file, 'r') as file:
-        limits = json.load(file)
-        color_limits=limits['limits']
-    return color_limits
-
-def draw_circle(drawing_data):
-    if drawing_data['drawing']:
-        drawing_data['temp_img'] = drawing_data['img'].copy()
-        if (drawing_data['start_pos'] == (0, 0)): return
-        circle_radius = int(np.sqrt((drawing_data['start_pos'][0] - drawing_data['previous_x']) ** 2 + (drawing_data['start_pos'][1] - drawing_data['previous_y']) ** 2))
-        cv2.circle(drawing_data['temp_img'], (drawing_data['start_pos'][0], drawing_data['start_pos'][1]), circle_radius, drawing_data['color'], drawing_data['thickness'])
-
-def draw_square(drawing_data):
-    if drawing_data['drawing']:
-        drawing_data['temp_img'] = drawing_data['img'].copy()
-        if (drawing_data['start_pos'] == (0, 0)): return
-        cv2.rectangle(drawing_data['temp_img'], (drawing_data['start_pos'][0], drawing_data['start_pos'][1]), (drawing_data['previous_x'], drawing_data['previous_y']), drawing_data['color'], drawing_data['thickness'])
-
-def draw_ellipse(drawing_data):
-    if drawing_data['drawing']:
-        drawing_data['temp_img'] = drawing_data['img'].copy()
-        if (drawing_data['start_pos'] == (0, 0)): return
-        ellipse_axis = (int(np.sqrt((drawing_data['start_pos'][0] - drawing_data['previous_x']) ** 2 + (drawing_data['start_pos'][1] - drawing_data['previous_y']) ** 2)), 50)
-        cv2.ellipse(drawing_data['temp_img'], (drawing_data['start_pos'][0], drawing_data['start_pos'][1]), ellipse_axis, 0, 0, 360, drawing_data['color'], drawing_data['thickness'])
+from functions import *
 
 def main():
     # -----------------------------------------------
@@ -77,7 +36,7 @@ def main():
         canvas = np.ones((h, w, 3), dtype=np.uint8) #"Transparent" board
     else: 
         canvas = np.ones((h, w, 3), dtype=np.uint8) * 255 #White board
-    default_img = copy.deepcopy(canvas)
+    default_img = canvas.copy()
 
     #....Image data storing...
     drawing_data = {'img': canvas, 'pencil_down': False, 'previous_x': 0, 'previous_y': 0, 'color': (255, 255, 255), 'thickness': 5, 'drawing': False, 'start_pos': (0, 0), 'temp_img': canvas.copy()}
@@ -136,20 +95,10 @@ def main():
                     if drawing_mode == 'Line':
                         cv2.line(drawing_data['img'], (drawing_data['previous_x'], drawing_data['previous_y']), (center_x, center_y), drawing_data['color'], drawing_data['thickness'])
 
-                    if drawing_mode == 'Circle':
-                        if drawing_data['drawing'] == False:
-                            drawing_data['start_pos'] = (center_x, center_y)
-                        draw_circle(drawing_data)
-                        
-                    if drawing_mode == 'Square':
-                        if drawing_data['drawing'] == False:
-                            drawing_data['start_pos'] = (center_x, center_y)
-                        draw_square(drawing_data)
-                        
-                    if drawing_mode == 'Ellipse':
-                        if drawing_data['drawing'] == False:
-                            drawing_data['start_pos'] = (center_x, center_y)
-                        draw_ellipse(drawing_data)
+                    if drawing_data['drawing'] == False:
+                        drawing_data['start_pos'] = (center_x, center_y)
+                    
+                    draw_shape(drawing_data, drawing_mode)
                 else:
                     current_center = None
                 
@@ -161,7 +110,10 @@ def main():
                             if drawing_mode == 'Line':
                                 cv2.line(drawing_data['img'], prev_center, current_center, drawing_data['color'], drawing_data['thickness'])
                         else:
-                            cv2.circle(drawing_data['img'], current_center, 2, drawing_data['color'], -1)
+                            if drawing_data['drawing'] == False:
+                                drawing_data['start_pos'] = (center_x, center_y)
+                            
+                            draw_shape(drawing_data, drawing_mode)
                     
                     prev_center = current_center
             
@@ -185,69 +137,11 @@ def main():
         #....Key awaiting....
         key = cv2.waitKey(50)
 
+        # Changes program behavier according to key pressed
         if key == ord('q'):
             print('Quitting program')
             break
-
-        elif key == ord('r'):
-            print('Setting pencil to red color')
-            drawing_data['color'] = (0, 0, 255)
-
-        elif key == ord('g'):
-            print('Setting pencil to green color')
-            drawing_data['color'] = (0, 255, 0)
-
-        elif key == ord('b'):
-            print('Setting pencil to blue color')
-            drawing_data['color'] = (255, 0, 0)
-
-        elif key == ord('+'):
-            if drawing_data['thickness'] < 10:
-                drawing_data['thickness'] += 1
-                print('Increased pencil thickness to: ' + str(drawing_data['thickness']))
-            else:
-                print('Maximum value is 10')
-
-        elif key == ord('-'):
-            if drawing_data['thickness'] > 1:
-                drawing_data['thickness'] -= 1
-                print('Decreased pencil thickness to: ' + str(drawing_data['thickness']))
-            else:
-                print('Minimum value is 1')
-        
-        elif key == ord('s'):
-            print('Changed mode to square')
-            drawing_mode = 'Square'
-            drawing_data['drawing'] = True
-
-        elif key == ord('e'):
-            print('Changed to ellipse mode')
-            drawing_mode = 'Ellipse'
-            drawing_data['drawing'] = True
-
-        elif key == ord('o'):
-            print('Changed to circle mode')
-            drawing_mode = 'Circle'
-            drawing_data['drawing'] = True
-
-        elif key == ord('l'):
-            print('Changed to line mode')
-            drawing_mode = 'Line'
-
-        elif key == ord('c'):
-            print('Pressed C button')
-            drawing_data['img'] = copy.deepcopy(default_img)
-
-        elif key == ord('w'):
-            print('Pressed W button')
-            date = datetime.datetime.now().strftime('%a_%b_%d_%H:%M:%S_%Y')
-            cv2.imwrite(f'./drawing_{date}.png', drawing_data['img'])
-        
-        else:
-            if drawing_data['drawing']:
-                drawing_data['img'] = drawing_data['temp_img'].copy()
-            drawing_data['drawing'] = False
-            drawing_data['start_pos'] = (0, 0)
+        else: pressed_key(key, drawing_data, default_img)
 
     # -----------------------------------------------
     # Termination
