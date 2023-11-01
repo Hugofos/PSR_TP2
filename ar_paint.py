@@ -122,8 +122,12 @@ def main():
         
         #....Canvas updating....
         if args['use_camera_stream']:
-            camera_and_canvas = cv2.addWeighted(frame, 1, drawing_data['img'], 1, 0)
-            cv2.imshow('canvas', camera_and_canvas)
+            if drawing_data['drawing']:
+                camera_and_canvas = cv2.addWeighted(frame, 1, drawing_data['temp_img'], 1, 0)
+                cv2.imshow('canvas', camera_and_canvas)
+            else:
+                camera_and_canvas = cv2.addWeighted(frame, 1, drawing_data['img'], 1, 0)
+                cv2.imshow('canvas', camera_and_canvas)
         else:
             if drawing_data['drawing']:
                 cv2.imshow('canvas', drawing_data['temp_img'])
