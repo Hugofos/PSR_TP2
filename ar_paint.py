@@ -5,6 +5,7 @@ import cv2
 import numpy as np
 
 from functions import *
+from functools import partial
 
 def main():
     # -----------------------------------------------
@@ -17,6 +18,8 @@ def main():
     parser.add_argument('-usp', '--use_shake_prevention', type=int, help='Set the value for the shakedown - recomended: 50', required=False)
     parser.add_argument('-ucs','--use_camera_stream', action='store_true', help='Use the camera stream as a canvas instead of a white board')
     parser.add_argument('-pbn','--paint_by_number', action='store_true', help='Use to paint in paint-by-number mode. Use_camara_stream overrides this argument\nWhen finished, press A to evaluate')
+    parser.add_argument('-d', '--dificulty', type=int, help='How exigent will be the program while evaluating your drawing capabilities\nOnly takes effect when using paint-by-number mode\nDefault Value = 1 - easy',
+                        choices=[1,2,3],default=1)
 
     args = vars(parser.parse_args())
 
@@ -42,11 +45,13 @@ def main():
 
     if not args['use_camera_stream'] and args['paint_by_number']:
         areas = segment_image(drawing_data,h, w)
+        dificulty = args['dificulty']
         drawing_data['score_board'] =  np.ones((100, 300, 3), dtype=np.uint8)
         cv2.imshow('Score', drawing_data['score_board'])
 
     cv2.namedWindow("canvas")
-    cv2.moveWindow("canvas", 40,30)
+    cv2.moveWindow("canvas", 800,300)
+    cv2.setMouseCallback("canvas", partial(mouseCallback, drawing_data=drawing_data))
 
     #....Shakedown initialization....
     prev_center = None
@@ -66,7 +71,9 @@ def main():
     while True:
         #....Camera capturing continuously....
         ret, frame = vid.read()
-        cv2.imshow('Camera feedback',frame)
+        cv2.namedWindow('Camera Feedback')
+        cv2.moveWindow('Camera Feedback', 40, 10)
+        cv2.imshow('Camera Feedback',frame)
 
         #...Image processing....
         lower_bound = np.array([color_limits['B']['min'], color_limits['G']['min'], color_limits['R']['min']], dtype=np.uint8)
@@ -74,6 +81,8 @@ def main():
 
         mask = cv2.inRange(frame, lower_bound, upper_bound)
 
+        cv2.namedWindow('Biggest Area Highlight')
+        cv2.moveWindow('Biggest Area Highlight', 40,850)
         #....Biggest area Selection....
         connectivity = 4  
         output = cv2.connectedComponentsWithStats(mask, connectivity, cv2.CV_32S)
@@ -155,8 +164,10 @@ def main():
                 cv2.imshow('canvas', drawing_data['img'])
         
         #....Periodically updates score....
-        calculate_score(drawing_data, default_img, areas)
         if not args['use_camera_stream'] and args['paint_by_number']:
+            calculate_score(drawing_data, dificulty, areas)
+            cv2.namedWindow('Score')
+            cv2.moveWindow('Score',800,10)
             cv2.imshow('Score', drawing_data['score_board'])
 
         #....Key awaiting....

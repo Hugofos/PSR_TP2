@@ -4,6 +4,28 @@ import numpy as np
 import datetime
 import random
 
+# Mouse callback function to draw
+def mouseCallback(event, x, y, flags, *userdata, drawing_data):
+    if event == cv2.EVENT_LBUTTONDOWN:
+        drawing_data['drawing'] = True
+    elif event == cv2.EVENT_LBUTTONUP:
+        drawing_data['drawing'] = False
+    #if drawing_data['pencil_down'] == True:
+    #    cv2.line(drawing_data['img'], (drawing_data['previous_x'], drawing_data['previous_y']), (x, y), drawing_data['color'], drawing_data['thickness'])
+    #drawing_data['previous_x'] = x
+    #drawing_data['previous_y'] = y
+    if drawing_data['drawing_mode'] == 'Line':
+        cv2.line(drawing_data['img'], (drawing_data['previous_x'], drawing_data['previous_y']), (x, y), drawing_data['color'], drawing_data['thickness'])
+    #Keeps changing the starting postition until the figure drawing starts
+    if drawing_data['drawing'] == False:
+        drawing_data['start_pos'] = (x, y)
+    #If the drawing mode has changed, it will draw the respective figure
+    draw_shape(drawing_data)
+    #Updates the position
+    drawing_data['previous_x'] = x
+    drawing_data['previous_y'] = y 
+
+
 # Load values from file
 def load_color_limits(json_file):
     with open(json_file, 'r') as file:
@@ -161,11 +183,18 @@ def segment_image(drawing_data, h, w):
     # Assign random numbers to sections and label them at the center
     for i, contour in enumerate(contours):
         section_number = random.randint(1, 3)
+        if section_number == 1:
+            col=(0,0,255)
+        elif section_number == 2:
+            col=(0,255,0)
+        else: 
+            col=(255,0,0)
         M = cv2.moments(contour)
         if M["m00"] != 0:
             cX = int(M["m10"] / M["m00"])
             cY = int(M["m01"] / M["m00"])
-            cv2.putText(img, str(section_number), (cX, cY), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2)
+            cv2.circle(img, (cX,cY), 15, col, -1)
+            cv2.putText(img, str(section_number), (cX, cY), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
         areas.append((contour,section_number))
 
     # Draw contours on the image for visualization
@@ -175,7 +204,7 @@ def segment_image(drawing_data, h, w):
     drawing_data['img'] = img.copy()
     return areas
 
-def calculate_score(drawing_data, default_img, areas):
+def calculate_score(drawing_data, dificulty, areas):
     color_map = {
     1: (0, 0, 255),  
     2: (0, 255, 0), 
@@ -196,7 +225,7 @@ def calculate_score(drawing_data, default_img, areas):
         expected_color = color_map.get(area_number, (0, 0, 0))
 
         # Define a color similarity threshold
-        color_similarity_threshold = 200  # Tweak as needed
+        color_similarity_threshold = int(200/dificulty)  # Tweak as needed
 
         # Compare the color of the area with the expected color
         color_diff = np.linalg.norm(average_color - expected_color)
@@ -204,4 +233,5 @@ def calculate_score(drawing_data, default_img, areas):
             user_score += 1  # Increment the score for a correct color
 
     # Display the user's score on the AR interface
-    cv2.putText(drawing_data['score_board'], f"Score: {user_score}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+    drawing_data['score_board'] = np.ones((100, 300, 3), dtype=np.uint8) #clear the text
+    cv2.putText(drawing_data['score_board'], f"Score: {user_score} / 12", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
