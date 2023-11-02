@@ -229,4 +229,4 @@ def calculate_score(drawing_data, dificulty, areas):
 
     # Display the user's score on the AR interface
     drawing_data['score_board'] = np.ones((100, 300, 3), dtype=np.uint8) #clear the text
-    cv2.putText(drawing_data['score_board'], f"Score: {user_score} / 12", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+    cv2.putText(drawing_data['score_board'], f"Score: {user_score} / 16", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
