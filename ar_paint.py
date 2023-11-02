@@ -16,10 +16,11 @@ def main():
     parser.add_argument('-j', '--JSON', type=str, help='Full path to the JSON file', required=True)
     parser.add_argument('-usp', '--use_shake_prevention', type=int, help='Set the value for the shakedown - recomended: 50', required=False)
     parser.add_argument('-ucs','--use_camera_stream', action='store_true', help='Use the camera stream as a canvas instead of a white board')
+    parser.add_argument('-pbn','--paint_by_number', action='store_true', help='Use to paint in paint-by-number mode. Use_camara_stream overrides this argument\nWhen finished, press A to evaluate')
 
     args = vars(parser.parse_args())
 
-    #.... Setting the color limits and drawing mode....
+    #.... Setting the color limits....
     color_limits = load_color_limits(args['JSON'])
 
     #....Camera Initialization....
@@ -28,6 +29,8 @@ def main():
     h, w, nc = frame.shape
 
     #....Canvas Creation....
+    areas = None
+
     if args['use_camera_stream']:
         canvas = np.ones((h, w, 3), dtype=np.uint8) #"Transparent" board
     else: 
@@ -35,7 +38,12 @@ def main():
     default_img = canvas.copy()
 
     #....Image data storing...
-    drawing_data = {'img': canvas, 'pencil_down': False, 'previous_x': 0, 'previous_y': 0, 'color': (255, 255, 255), 'thickness': 5, 'drawing': False, 'drawing_mode': None, 'start_pos': (0, 0), 'temp_img': canvas.copy()}
+    drawing_data = {'img': canvas, 'pencil_down': False, 'previous_x': 0, 'previous_y': 0, 'color': (255, 255, 255), 'thickness': 5, 'drawing': False, 'drawing_mode': None, 'start_pos': (0, 0), 'temp_img': canvas.copy(),'score_board':None}
+
+    if not args['use_camera_stream'] and args['paint_by_number']:
+        areas = segment_image(drawing_data,h, w)
+        drawing_data['score_board'] =  np.ones((100, 300, 3), dtype=np.uint8)
+        cv2.imshow('Score', drawing_data['score_board'])
 
     cv2.namedWindow("canvas")
     cv2.moveWindow("canvas", 40,30)
@@ -145,6 +153,11 @@ def main():
                 cv2.imshow('canvas', drawing_data['temp_img'])
             else:
                 cv2.imshow('canvas', drawing_data['img'])
+        
+        #....Periodically updates score....
+        calculate_score(drawing_data, default_img, areas)
+        if not args['use_camera_stream'] and args['paint_by_number']:
+            cv2.imshow('Score', drawing_data['score_board'])
 
         #....Key awaiting....
         key = cv2.waitKey(50)
@@ -153,7 +166,7 @@ def main():
         if key == ord('q'):
             print('Quitting program')
             break
-        else: pressed_key(key, drawing_data, default_img)
+        else: pressed_key(key, drawing_data, default_img, areas)
 
     # -----------------------------------------------
     # Termination

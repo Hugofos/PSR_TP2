@@ -32,7 +32,7 @@ def draw_shape(drawing_data):
             cv2.ellipse(drawing_data['temp_img'], (drawing_data['start_pos'][0], drawing_data['start_pos'][1]), ellipse_axis, 0, 0, 360, drawing_data['color'], drawing_data['thickness'])
 
 # Changes program behavier according to key pressed
-def pressed_key(key, drawing_data, default_img):
+def pressed_key(key, drawing_data, default_img, areas):
     if key == ord('r'):
         print('Setting pencil to red color')
         drawing_data['color'] = (0, 0, 255)
@@ -76,46 +76,43 @@ def pressed_key(key, drawing_data, default_img):
         drawing_data['drawing_mode'] = 'Line'
 
     elif key == ord('c'):
-        print('Pressed C button')
+        print('Cleared Image')
         drawing_data['img'] = default_img.copy()
 
     elif key == ord('w'):
-        print('Pressed W button')
+        print('Saved Image')
         date = datetime.datetime.now().strftime('%a_%b_%d_%H:%M:%S_%Y')
         cv2.imwrite(f'./drawing_{date}.png', drawing_data['img'])
 
-    elif key == ord('m'):
-        segment_image(drawing_data)
-    
-    else:
+    else: #Used to know when a pressed key was released
         if drawing_data['drawing']:
             drawing_data['img'] = drawing_data['temp_img'].copy()
         drawing_data['drawing'] = False
         drawing_data['start_pos'] = (0, 0)
-    
-def segment_image(drawing_data):
-    # Create a blank white canvas
-    width, height = 512, 512
-    img = np.ones((height, width, 3), np.uint8) * 255
+
+
+def segment_image(drawing_data, h, w):
+    # Create a blank white canvas   
     num_lines = 3
+    img = np.ones((h, w, 3), np.uint8) * 255
 
     # Draw 3 vertical polylines
     for i in range(num_lines):
         points = []
 
         # First point: y = 0
-        x1 = (i + 1) * (width // (num_lines + 1))
+        x1 = (i + 1) * (w // (num_lines + 1))
         y = 0
         points.append((x1, y))
 
         # Second point: limited by 10 pixels on x, y at the bottom
         x2 = x1 + random.randint(-50, 50)
-        y = height / 2
+        y = h / 2
         points.append((x2, y))
 
         # Third point: limited by 10 pixels on x, y at the bottom
         x = x2 + random.randint(-50, 50)
-        y = height
+        y = h
         points.append((x, y))
 
         points = np.array(points, np.int32)
@@ -131,16 +128,16 @@ def segment_image(drawing_data):
 
         # First point: x = 0
         x = 0
-        y1 = (j + 1) * (height // (num_lines + 1))
+        y1 = (j + 1) * (h // (num_lines + 1))
         points.append((x, y1))
 
         # Second point: limited by 10 pixels on y, x at the right end
-        x = width / 2
+        x = w / 2
         y2 = y1 + random.randint(-50, 50)
         points.append((x, y2))
 
         # Third point: limited by 10 pixels on y, x at the right end
-        x = width
+        x = w
         y = y2 + random.randint(-50, 50)
         points.append((x, y))
 
@@ -160,6 +157,7 @@ def segment_image(drawing_data):
     # Find contours of connected components
     contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
+    areas=[]
     # Assign random numbers to sections and label them at the center
     for i, contour in enumerate(contours):
         section_number = random.randint(1, 3)
@@ -167,10 +165,43 @@ def segment_image(drawing_data):
         if M["m00"] != 0:
             cX = int(M["m10"] / M["m00"])
             cY = int(M["m01"] / M["m00"])
-            cv2.putText(img, str(section_number), (cX, cY), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
+            cv2.putText(img, str(section_number), (cX, cY), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2)
+        areas.append((contour,section_number))
 
     # Draw contours on the image for visualization
     cv2.drawContours(img, contours, -1, (0, 0, 0), 2)
 
     # Display the image
     drawing_data['img'] = img.copy()
+    return areas
+
+def calculate_score(drawing_data, default_img, areas):
+    color_map = {
+    1: (0, 0, 255),  
+    2: (0, 255, 0), 
+    3: (255, 0, 0)
+}
+
+    # Initialize user's score
+    user_score = 0
+
+    # Iterate through the contours you have
+    for contour, area_number in areas:
+        # Calculate the average color within the contour
+        x, y, w, h = cv2.boundingRect(contour)
+        roi = drawing_data['img'][y:y+h, x:x+w]
+        average_color = np.mean(roi, axis=(0, 1))
+
+        # Get the expected color from the color map
+        expected_color = color_map.get(area_number, (0, 0, 0))
+
+        # Define a color similarity threshold
+        color_similarity_threshold = 200  # Tweak as needed
+
+        # Compare the color of the area with the expected color
+        color_diff = np.linalg.norm(average_color - expected_color)
+        if color_diff < color_similarity_threshold:
+            user_score += 1  # Increment the score for a correct color
+
+    # Display the user's score on the AR interface
+    cv2.putText(drawing_data['score_board'], f"Score: {user_score}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
