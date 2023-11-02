@@ -6,21 +6,16 @@ import random
 
 # Mouse callback function to draw
 def mouseCallback(event, x, y, flags, *userdata, drawing_data):
-    if event == cv2.EVENT_LBUTTONDOWN:
-        drawing_data['drawing'] = True
-    elif event == cv2.EVENT_LBUTTONUP:
-        drawing_data['drawing'] = False
-    #if drawing_data['pencil_down'] == True:
-    #    cv2.line(drawing_data['img'], (drawing_data['previous_x'], drawing_data['previous_y']), (x, y), drawing_data['color'], drawing_data['thickness'])
-    #drawing_data['previous_x'] = x
-    #drawing_data['previous_y'] = y
     if drawing_data['drawing_mode'] == 'Line':
         cv2.line(drawing_data['img'], (drawing_data['previous_x'], drawing_data['previous_y']), (x, y), drawing_data['color'], drawing_data['thickness'])
+    
     #Keeps changing the starting postition until the figure drawing starts
     if drawing_data['drawing'] == False:
         drawing_data['start_pos'] = (x, y)
+    
     #If the drawing mode has changed, it will draw the respective figure
     draw_shape(drawing_data)
+    
     #Updates the position
     drawing_data['previous_x'] = x
     drawing_data['previous_y'] = y 
