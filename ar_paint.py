@@ -17,7 +17,7 @@ def main():
     parser.add_argument('-j', '--JSON', type=str, help='Full path to the JSON file', required=True)
     parser.add_argument('-usp', '--use_shake_prevention', type=int, help='Set the value for the shakedown - recomended: 50', required=False)
     parser.add_argument('-ucs','--use_camera_stream', action='store_true', help='Use the camera stream as a canvas instead of a white board')
-    parser.add_argument('-pbn','--paint_by_number', action='store_true', help='Use to paint in paint-by-number mode. Use_camara_stream overrides this argument\nWhen finished, press A to evaluate')
+    parser.add_argument('-pbn','--paint_by_number', action='store_true', help='Use to paint in paint-by-number mode. Use_camara_stream overrides this argument')
     parser.add_argument('-d', '--dificulty', type=int, help='How exigent will be the program while evaluating your drawing capabilities\nOnly takes effect when using paint-by-number mode\nDefault Value = 1 - easy',
                         choices=[1,2,3],default=1)
 
